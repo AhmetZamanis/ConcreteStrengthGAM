@@ -1,4 +1,4 @@
-# ConcreteStrengthGAM
+# Generalized Additive Models - Concrete Strength Analysis
 Predicting concrete compressive strength using GAM regression, as a non-linear function of the mixture components. Visualization of the results with 3D interactive Plotly plots.
 
 [Report](https://rpubs.com/AhmetZamanis/ConcreteStrength) of the full analysis on RPubs. The interactive plots are too big for Github Markdown.
