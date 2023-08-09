@@ -37,3 +37,7 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# Quarto and GitHub page
+/.quarto/
+/_site/
