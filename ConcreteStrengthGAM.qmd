@@ -1,15 +1,17 @@
 ---
 title: "Generalized Additive Models - Concrete strength analysis"
 author: "Ahmet Zamanis"
-output: 
-  html_document:
-    toc: TRUE
+format: 
+  html:
+    toc: true
+execute: 
+  echo: false
+  warning: false
+  message: false
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
-knitr::opts_chunk$set(warning = FALSE)
-knitr::opts_chunk$set(message = FALSE)
+```{r setup}
+#| echo: true
 
 library(rstudioapi)
 library(htmltools)
@@ -34,14 +36,14 @@ options(scipen=999)
 
 ## Introduction
 
-Generalized additive models (GAMs) allow us to capture relationships between predictors and outcome variables, using non-linear smooth functions with varying shapes. GAMs capture complex relationships much more easily than linear regression models, while still being relatively easy to interpret and plot. GAMs can also derive the importance of the predictors from the data, pick smoothing parameters for them, and apply shrinkage to select out unimportant predictors.
-\
+Generalized additive models (GAMs) allow us to capture relationships between predictors and outcome variables, using non-linear smooth functions with varying shapes. GAMs capture complex relationships much more easily than linear regression models, while still being relatively easy to interpret and plot. GAMs can also derive the importance of the predictors from the data, pick smoothing parameters for them, and apply shrinkage to select out unimportant predictors.\
 \
 In this analysis, we have a [dataset](https://archive.ics.uci.edu/ml/datasets/Concrete+Compressive+Strength) of concrete compressive strength measurements, and we will try to predict compressive strength using the quantities of different components.
 
 ## Data Preparation
 
 Let's load and view our original dataset.
+
 ```{r}
 
 df_org <- read.csv("concrete_data.csv", header=TRUE, encoding="UTF-8" )
@@ -57,21 +59,24 @@ tb1 <- gt(data=df_org[1:5,], rownames_to_stub = TRUE) %>%
 tb1
 
 ```
-All variables are numeric. All columns except the last two are concrete components, in units of kilograms per m^3 of mixture. Below is the description of each column.
 
-- cement is self explanatory.
-- slag is a substitute for regular cement.
-- flyash is another substitute for regular cement.
-- water is self explanatory.
-- superplasticizer is a component that reduces the need for water in the mixture.
-- Coarse aggregate is material such as sand, gravel or stones, in large sizes and irregular shapes.
-- Fine aggregate is aggregate material in very small, sand-like regular shapes.
+All variables are numeric. All columns except the last two are concrete components, in units of kilograms per m\^3 of mixture. Below is the description of each column.
 
-Besides the component variables, we have the age of the concrete mixture in days, and concrete compressive strength, our outcome variable, in units of megapascals (MPa).
-\
+-   cement is self explanatory.
+-   slag is a substitute for regular cement.
+-   flyash is another substitute for regular cement.
+-   water is self explanatory.
+-   superplasticizer is a component that reduces the need for water in the mixture.
+-   Coarse aggregate is material such as sand, gravel or stones, in large sizes and irregular shapes.
+-   Fine aggregate is aggregate material in very small, sand-like regular shapes.
+
+Besides the component variables, we have the age of the concrete mixture in days, and concrete compressive strength, our outcome variable, in units of megapascals (MPa).\
 \
 For ease of coding and plotting, we will rename some of the variables. We will abbreviate superplasticizer, coarse aggregate and fine aggregate, while renaming the outcome variable to strength.
-```{r, echo=TRUE}
+
+```{r}
+#| echo: true
+
 colnames(df_org)[5:7] <- c("SP", "CA", "FA")
 colnames(df_org)[9] <- "strength"
 ```
@@ -80,14 +85,14 @@ colnames(df_org)[9] <- "strength"
 
 Here is some basic information about concrete components:
 
-- The three main components of concrete are cements, water and aggregates. Their balances determine the characteristics of the concrete.
-  - Slag and fly ash are alternatives for regular cement.
-  - Superplasticizer reduces the amount of water needed, so it can be considered a water replacement/alternative.
-  - Coarse aggregates make up the bulk of aggregate content, while fine aggregates fill in the spaces between the coarse aggregates.
-- In general, a strong concrete mix has a low water/cement ratio.
+-   The three main components of concrete are cements, water and aggregates. Their balances determine the characteristics of the concrete.
+    -   Slag and fly ash are alternatives for regular cement.
+    -   Superplasticizer reduces the amount of water needed, so it can be considered a water replacement/alternative.
+    -   Coarse aggregates make up the bulk of aggregate content, while fine aggregates fill in the spaces between the coarse aggregates.
+-   In general, a strong concrete mix has a low water/cement ratio.
 
 This information likely means that we should consider the total amounts of each component category as our main predictor variables. We should also consider the balances between them, as well as the balance of individual components in each component category. For these reasons, we will calculate some new variables.
-\
+
 ```{r}
 
 df_org$total_cem <- df_org$cement + df_org$slag + df_org$flyash
@@ -113,13 +118,13 @@ tb2 <- gt(data=df_org[1:5,], rownames_to_stub = TRUE) %>%
 tb2
 
 ```
-\
+
 Our new variables are the following:
 
-- total_cem is the total amount of cement-type components: The sum of cement, slag and flyash.
-- total_water is the total amount of water-type components: The sum of water and superplasticizer.
-- total_agg is the total amount of aggregate-type components: The sum of coarse and fine aggregates.
-- wc_ratio is the water/cement ratio in the mixture, calculated by dividing total_water by total_cem.
+-   total_cem is the total amount of cement-type components: The sum of cement, slag and flyash.
+-   total_water is the total amount of water-type components: The sum of water and superplasticizer.
+-   total_agg is the total amount of aggregate-type components: The sum of coarse and fine aggregates.
+-   wc_ratio is the water/cement ratio in the mixture, calculated by dividing total_water by total_cem.
 
 ## Exploratory analysis
 
@@ -128,7 +133,9 @@ Let's explore the distributions, correlations and relationships in our dataset, 
 ### Distributions
 
 Let's start with the distributions in our dataset.
+
 ```{r}
+
 for (i in 1:ncol(df_org)) { 
   x_val <- df_org[,i]
   x_lab <- colnames(df_org)[i]
@@ -162,10 +169,9 @@ hist4 + hist1 + hist3 + hist2 + plot_layout(guides="collect") +
                   theme=theme_bw())
 ```
 
-- The total amounts of cement-type components, and the amounts of regular cement both follow a slightly right-skewed distribution. Roughly half of the mixtures in the dataset have 350-500 units of cement-type components, and have 200-350 units of cement.
-- Slag and flyash content is zero for a lot of observations. The median value for flyash is zero, and the median value for slag is 22. Still, there are quite a few observations with more than 100 units of either component.
+-   The total amounts of cement-type components, and the amounts of regular cement both follow a slightly right-skewed distribution. Roughly half of the mixtures in the dataset have 350-500 units of cement-type components, and have 200-350 units of cement.
+-   Slag and flyash content is zero for a lot of observations. The median value for flyash is zero, and the median value for slag is 22. Still, there are quite a few observations with more than 100 units of either component.
 
-\
 ```{r}
 hist7 / (hist5 | hist6) + plot_layout(guides="collect") + 
   plot_annotation(title="Histograms of water-type components, and their total",
@@ -173,10 +179,9 @@ hist7 / (hist5 | hist6) + plot_layout(guides="collect") +
                   theme=theme_bw())
 ```
 
-- The total amount of water-type components, and the amount of water, follow a relatively balanced distribution, with many observations around their respective medians, roughly 180 units for both.
-- Many mixtures have zero superplasticizer content, though the median amount is around 6-7 units. The mixtures that contain SP mostly contain less than 10-15 units, suggesting SP is used in small amounts.
+-   The total amount of water-type components, and the amount of water, follow a relatively balanced distribution, with many observations around their respective medians, roughly 180 units for both.
+-   Many mixtures have zero superplasticizer content, though the median amount is around 6-7 units. The mixtures that contain SP mostly contain less than 10-15 units, suggesting SP is used in small amounts.
 
-\
 ```{r}
 hist10 / (hist8 | hist9) + plot_layout(guides="collect") + 
   plot_annotation(title="Histograms of aggregate components, and their total",
@@ -184,11 +189,10 @@ hist10 / (hist8 | hist9) + plot_layout(guides="collect") +
                   theme=theme_bw())
 ```
 
-- Coarse, fine and total aggregates all follow relatively balanced distributions, though total_agg is slightly left skewed. 
-- Half of the mixtures in the dataset contain roughly 1675-1825 units of total aggregates, 925-1025 units of CA, and 725-825 units of FA.
-- This makes sense, as coarse aggregates make up the bulk of aggregate content, and fine aggregates are meant to fill the gaps between them.
+-   Coarse, fine and total aggregates all follow relatively balanced distributions, though total_agg is slightly left skewed.
+-   Half of the mixtures in the dataset contain roughly 1675-1825 units of total aggregates, 925-1025 units of CA, and 725-825 units of FA.
+-   This makes sense, as coarse aggregates make up the bulk of aggregate content, and fine aggregates are meant to fill the gaps between them.
 
-\
 ```{r}
 hist13 / (hist11 | hist12) + plot_layout(guides="collect") + 
   plot_annotation(title="Histograms of concrete compressive strength, age, water/cement ratio",
@@ -197,62 +201,64 @@ hist13 / (hist11 | hist12) + plot_layout(guides="collect") +
 
 ```
 
-- Our outcome variable, concrete compressive strength, is close to a normal distribution, with a slight right skew. Half of the mixtures have between 22-42 units of compressive strength, though there are quite a few mixtures with more than 50-60 units of strength.
-- The ages of our mixtures are very right skewed. Half of the mixtures have an age between zero and roughly 50 days, though there are a few outliers with hundreds of days in age.
-- The water/concrete ratio is right skewed, with half of the values between 0.4-0.6, though the most frequent observations have around 0.35 water/concrete ratio.
+-   Our outcome variable, concrete compressive strength, is close to a normal distribution, with a slight right skew. Half of the mixtures have between 22-42 units of compressive strength, though there are quite a few mixtures with more than 50-60 units of strength.
+-   The ages of our mixtures are very right skewed. Half of the mixtures have an age between zero and roughly 50 days, though there are a few outliers with hundreds of days in age.
+-   The water/concrete ratio is right skewed, with half of the values between 0.4-0.6, though the most frequent observations have around 0.35 water/concrete ratio.
 
 ### Correlations
 
 Let's check the correlations between our original variables.
+
 ```{r}
 ggpairs(df_org[-c(4,7,10,12)])
 ```
-\
+
 Correlations with the outcome variable, compressive strength:
 
-- A correlation of 0.5, and a linear-like increase with the amount of cement.
-- A correlation of 0.366, and likely a declining increase with the amount of superplasticizer.
-- A correlation of 0.33, and a reverse-U shaped relationship with mixture age.
-  - Remember that the correlation coefficient is linear, so it can underestimate non-linear and changing relationships like this one.
-  - This would be a challenging relationship to model with linear regression, but GAM can fit smooth functions with very flexible shapes.
-- A correlation of 0.29 with water. The shape of the relationship is unclear.
-  - Again, GAM is likely to prove very useful for modeling this type of relationship.
+-   A correlation of 0.5, and a linear-like increase with the amount of cement.
+-   A correlation of 0.366, and likely a declining increase with the amount of superplasticizer.
+-   A correlation of 0.33, and a reverse-U shaped relationship with mixture age.
+    -   Remember that the correlation coefficient is linear, so it can underestimate non-linear and changing relationships like this one.
+    -   This would be a challenging relationship to model with linear regression, but GAM can fit smooth functions with very flexible shapes.
+-   A correlation of 0.29 with water. The shape of the relationship is unclear.
+    -   Again, GAM is likely to prove very useful for modeling this type of relationship.
 
 Correlations between the predictor variables:
 
-- SP and water have a correlation of -0.66. The relationship seems to be a "diminishing decline": as water increases, SP decreases.
-  - Makes sense, as SP is meant to reduce the need for water in the mix.
-- Fine aggregate and water have a correlation of -0.45. The shape of the relationship is unclear.  
-- Flyash and cement have a correlation of -0.397, again a diminishing relationship. 
-  - Again, makes sense as flyash is a replacement for cement.
-  - The shape of the relationship is hard to interpret as there are many mixtures with zero flyash.
-- Flyash and SP have a correlation of 0.378. The shape of the relationship is unclear.
+-   SP and water have a correlation of -0.66. The relationship seems to be a "diminishing decline": as water increases, SP decreases.
+    -   Makes sense, as SP is meant to reduce the need for water in the mix.
+-   Fine aggregate and water have a correlation of -0.45. The shape of the relationship is unclear.\
+-   Flyash and cement have a correlation of -0.397, again a diminishing relationship.
+    -   Again, makes sense as flyash is a replacement for cement.
+    -   The shape of the relationship is hard to interpret as there are many mixtures with zero flyash.
+-   Flyash and SP have a correlation of 0.378. The shape of the relationship is unclear.
 
 As we can see, the original variables don't display a particularly strong (linear) relationship with strength, and the shapes of the relationships are not easy to interpret. Let's see the correlations of our calculated variables.
+
 ```{r}
 ggpairs(df_org[,c(4, 7, 10, 12, 13)])
 ```
-\
+
 Correlations with the outcome variable, compressive strength:
 
-- A correlation of 0.61 with the total amount of cement-type components. The relationship is linear-like.
-- A correlation of -0.625 with the water/cement ratio. The relationship is a linear-like decline, with some signs of diminishing.
-- A correlation of -0.259 with the total amount of aggregates. No clear shape in the scatterplot.
-- A correlation of -0.222 with the total amount of water-type components. The scatterplot shape suggests a slight declining relationship.
+-   A correlation of 0.61 with the total amount of cement-type components. The relationship is linear-like.
+-   A correlation of -0.625 with the water/cement ratio. The relationship is a linear-like decline, with some signs of diminishing.
+-   A correlation of -0.259 with the total amount of aggregates. No clear shape in the scatterplot.
+-   A correlation of -0.222 with the total amount of water-type components. The scatterplot shape suggests a slight declining relationship.
 
 Correlations among our new predictors:
 
-- Water/cement ratio is strongly correlated with total amount of cement, with -0.9. There is a linear-like declining relationship.
-  - W/C ratio also displays a correlation of 0.4 with total water content, and 0.4 with total aggregate content.
-- Total cement displays -0.66 correlation with total aggregate content.
-- Total water content displays -0.599 correlation with total aggregate content.
+-   Water/cement ratio is strongly correlated with total amount of cement, with -0.9. There is a linear-like declining relationship.
+    -   W/C ratio also displays a correlation of 0.4 with total water content, and 0.4 with total aggregate content.
+-   Total cement displays -0.66 correlation with total aggregate content.
+-   Total water content displays -0.599 correlation with total aggregate content.
 
-These relationships suggest the amount of a certain component type is constrained by the amounts of other types, as we would expect. 
+These relationships suggest the amount of a certain component type is constrained by the amounts of other types, as we would expect.
 
 ### Relationships with strength
 
-To better visualize the relationships of our components with strength, especially depending on the amounts of other components, we can use 3D scatterplots. 
-\
+To better visualize the relationships of our components with strength, especially depending on the amounts of other components, we can use 3D scatterplots.
+
 ```{r}
 sc1 <- plot_ly(data=df_org, x=~total_cem, y=~total_water, z=~strength, 
         marker=list(color=~strength, 
@@ -271,12 +277,11 @@ sc1 <- plot_ly(data=df_org, x=~total_cem, y=~total_water, z=~strength,
 htmltools::tagList(sc1)
 ```
 
-- In general, higher amounts of cement-type components, and lower amounts of water-type components lead to considerably stronger mixes.
-  - Cement's effect on strength doesn't seem to diminish within this range of values.
-  - Water's effect is likely less, as we see numerous strong mixes roughly within a range of 140-200.
-    - There is a lack of strong mixes below a water content of 140, but this may be due to a lack of observations, or a lack of cement-type components in these mixes.
+-   In general, higher amounts of cement-type components, and lower amounts of water-type components lead to considerably stronger mixes.
+    -   Cement's effect on strength doesn't seem to diminish within this range of values.
+    -   Water's effect is likely less, as we see numerous strong mixes roughly within a range of 140-200.
+        -   There is a lack of strong mixes below a water content of 140, but this may be due to a lack of observations, or a lack of cement-type components in these mixes.
 
-\
 ```{r}
 sc2 <- plot_ly(data=df_org, x=~total_cem, y=~total_agg, z=~strength, 
                marker=list(color=~strength, 
@@ -295,10 +300,9 @@ sc2 <- plot_ly(data=df_org, x=~total_cem, y=~total_agg, z=~strength,
 htmltools::tagList(sc2)
 ```
 
-- Again, a higher amount of cement-type components leads to considerably stronger mixes, while the total aggregate content doesn't seem to have much effect.
-  - The observations on the lower and higher ends of aggregate content seem to have weaker mixes, but this may be due to a lack of observations.
+-   Again, a higher amount of cement-type components leads to considerably stronger mixes, while the total aggregate content doesn't seem to have much effect.
+    -   The observations on the lower and higher ends of aggregate content seem to have weaker mixes, but this may be due to a lack of observations.
 
-\
 ```{r}
 sc3 <- plot_ly(data=df_org, x=~total_water, y=~total_agg, z=~strength, 
                marker=list(color=~strength, 
@@ -318,8 +322,7 @@ htmltools::tagList(sc3)
 ```
 
 Again, a lower total water content generally leads to stronger mixes, between the ranges of 140-200, while total aggregate content doesn't have much effect besides the extreme low and high ends.
-\
-\
+
 ```{r}
 sc4 <- plot_ly(data=df_org, x=~wc_ratio, y=~age, z=~strength, 
                marker=list(color=~strength, 
@@ -338,42 +341,38 @@ sc4 <- plot_ly(data=df_org, x=~wc_ratio, y=~age, z=~strength,
 htmltools::tagList(sc4)
 ```
 
-- Water/cement ratio has a strong inverse relationship with strength: The closer the ratio to 0.3, the stronger the mix. This seems to more or less hold for any level of mixture age.
-  - This is likely the strongest sole predictor in our dataset.
-- It's hard to assess age's effect on concrete strength, as there are few observations beyond the age of 100, but it seems that mixture ages between 25-100 tend to be strongest, while younger and older mixes are a bit weaker.
-  - Again, this may be misleading due to a lack of observations. Nevertheless, an interesting relationship, and GAM is likely to come in handy to capture it.
+-   Water/cement ratio has a strong inverse relationship with strength: The closer the ratio to 0.3, the stronger the mix. This seems to more or less hold for any level of mixture age.
+    -   This is likely the strongest sole predictor in our dataset.
+-   It's hard to assess age's effect on concrete strength, as there are few observations beyond the age of 100, but it seems that mixture ages between 25-100 tend to be strongest, while younger and older mixes are a bit weaker.
+    -   Again, this may be misleading due to a lack of observations. Nevertheless, an interesting relationship, and GAM is likely to come in handy to capture it.
 
 ### Conditional plots
 
-We saw the strength of concrete depends on numerous components, and viable mixtures likely have different tradeoffs between certain components. It's very likely that the effects of our predictors are mediated by the values of other predictors, i.e, there is interaction between the predictors.
-\
+We saw the strength of concrete depends on numerous components, and viable mixtures likely have different tradeoffs between certain components. It's very likely that the effects of our predictors are mediated by the values of other predictors, i.e, there is interaction between the predictors.\
 \
 With numeric variables, we can use conditional plots to check for interactions. In the plots below, the relationship of one predictor with strength is plotted several times, each for a given range of another predictor. If the relationship between predictor one and strength changes based on the range of predictor two, we can say there is a considerable interaction between the two predictors. Let's start by plotting the interactions of our cement-type components with the total amounts of cement-type components.
-\
+
 ```{r}
 coplot(strength ~ total_cem | cement, data=df_org, number=2, rows=1, panel=panel.smooth,
        pch=16, col="#0571B0", overlap=0)
 ```
-\
+
 Each range of the given predictor, symbolized by the gray bars above, corresponds with each scatterplot of the relationship of the other predictor and the outcome.The total amount of cement-type components clearly has a bigger effect on mixture strength when it's made up of more cement. This suggests a certain amount of regular cement is necessary for the strongest mixes.
-\
-\
+
 ```{r}
 coplot(strength ~ total_cem | slag, data=df_org, number=4, rows=1, panel=panel.smooth,
        pch=16, col="#0571B0", overlap=0)
 ```
-\
-Different amounts of slag do not impact the effect of total cement by a lot, but there are some notable differences. 
-\
-\
+
+Different amounts of slag do not impact the effect of total cement by a lot, but there are some notable differences.
+
 ```{r}
 coplot(strength ~ total_cem | flyash, data=df_org, number=3, rows=1, panel=panel.smooth,
        pch=16, col="#0571B0", overlap=0)
 ```
-\
+
 The amount of fly ash does not greatly impact the effect of total cement either.
-\
-\
+
 ```{r}
 
 coplot(strength ~ total_water | water, data=df_org, number=2, rows=1, panel=panel.smooth,
@@ -381,35 +380,31 @@ coplot(strength ~ total_water | water, data=df_org, number=2, rows=1, panel=pane
 
 
 ```
-\
+
 Water levels greatly impact the relationship between total water-type components and strength.
-\
-\
+
 ```{r}
 coplot(strength ~ total_water | SP, data=df_org, number=4, rows=1, panel=panel.smooth,
        pch=16, col="#0571B0", overlap=0)
 ```
-\
+
 SP levels also have a big impact on the relationship between total water-type components and strength.
-\
-\
+
 ```{r}
 coplot(strength ~ total_agg | CA, data=df_org, number=4, rows=1, panel=panel.smooth,
        pch=16, col="#0571B0", overlap=0)
 
 ```
-\
+
 The CA levels greatly affect the relationship between total aggregate content and strength.
-\
-\
+
 ```{r}
 coplot(strength ~ total_agg | FA, data=df_org, number=4, rows=1, panel=panel.smooth,
        pch=16, col="#0571B0", overlap=0)
 ```
-\
+
 FA levels also have a big impact on the relationship between total aggregate content and strength.
-\
-\
+
 ```{r}
 
 coplot(strength ~ total_cem | total_water, data=df_org, number=4, rows=1, panel=panel.smooth,
@@ -418,54 +413,54 @@ coplot(strength ~ total_cem | total_water, data=df_org, number=4, rows=1, panel=
 
 
 ```
-\
+
 The total amounts of water-type components don't seem to affect the relationship between total amounts of cement-type components and strength by much. This is a surprising result, though there are some slight differences.
-\
-\
+
 ```{r}
 coplot(strength ~ total_cem | total_agg, data=df_org, number=4, rows=1, panel=panel.smooth,
        pch=16, col="#0571B0", overlap=0)
 ```
-\
+
 The total aggregate content affects the relationship between total cement and strength, but again, not by much.
-\
-\
+
 ```{r}
 coplot(strength ~ total_water | total_agg, data=df_org, number=4, rows=1, panel=panel.smooth,
        pch=16, col="#0571B0", overlap=0)
 ```
-\
+
 The total aggregate content affects the relationship between total water content and strength considerably.
-\
 
 ## GAM regression
 
-Now let's fit our GAMs to predict the concrete compressive strength, as a function of the mixture components and age. 
+Now let's fit our GAMs to predict the concrete compressive strength, as a function of the mixture components and age.
 
 ### gam1
 
 Let's fit our first model, gam1, which will consist of:
 
-- The main effects of total_cem, total_water and total_agg, and their interactions. These variables represent the total amounts of 3 main components of concrete, and their interactions will account for the balance of each one in the mixture.
-- The interaction effects between each component category and the original components that make it up:
-  - total_cem's interactions with cement, slag, flyash,
-  - total_water's interactions with water and SP,
-  - total_agg's interactions with CA and FA.
-  - These interaction effects will account for the balance of each component type within its category. 
-  - We won't include the main effects of the original components, as they already make up the 3 main component categories.
-- The age variable, as a single main effect. We have no reason to believe age has a strong interaction with the concrete components.
+-   The main effects of total_cem, total_water and total_agg, and their interactions. These variables represent the total amounts of 3 main components of concrete, and their interactions will account for the balance of each one in the mixture.
+-   The interaction effects between each component category and the original components that make it up:
+    -   total_cem's interactions with cement, slag, flyash,
+    -   total_water's interactions with water and SP,
+    -   total_agg's interactions with CA and FA.
+    -   These interaction effects will account for the balance of each component type within its category.
+    -   We won't include the main effects of the original components, as they already make up the 3 main component categories.
+-   The age variable, as a single main effect. We have no reason to believe age has a strong interaction with the concrete components.
 
 GAMs can be specified with many options, and we will use the following for our model:
 
-- We will use default smooth functions for age, using the s() term. This will fit non-linear, one dimensional smooth functions that will capture age's relationship with strength. The effect of age will be predicted by the sum of numerous smooth functions. We let the algorithm choose the number of smooths, but we can specify if needed.
-- We will use tensor products for the interacting component variables, specifically te() for main and interaction effects, and ti() for interaction effects only. These will fit smooth functions with numerous dimensions, and capture the predictors' and their interactions' relationships with strength.
-- We will use "REML" (restricted maximum likelihood) as our method to choose smoothing parameters. This will let the algorithm automatically choose the smoothing parameters for each model term.
-  - The smoothing parameters control how smooth or "wiggly" the smoothing functions will be: More "wiggly" functions will explain the variance in our data better, but will become harder to interpret, and may not generalize well to other datasets. 
-  - The smoothing parameters can be manually specified to adjust the tradeoff between variance explained and robustness of the model. A smoothing parameter of 0 will fit the relationship in the data exactly, while a smoothing parameter of 1 will practically fit a straight line.
-- We will also let the algorithm apply "shrinkage": This will penalize the model parameters further, shrinking variables with weak effects, in a sense "choosing" the predictors for us without completely dropping them from the model.
+-   We will use default smooth functions for age, using the s() term. This will fit non-linear, one dimensional smooth functions that will capture age's relationship with strength. The effect of age will be predicted by the sum of numerous smooth functions. We let the algorithm choose the number of smooths, but we can specify if needed.
+-   We will use tensor products for the interacting component variables, specifically te() for main and interaction effects, and ti() for interaction effects only. These will fit smooth functions with numerous dimensions, and capture the predictors' and their interactions' relationships with strength.
+-   We will use "REML" (restricted maximum likelihood) as our method to choose smoothing parameters. This will let the algorithm automatically choose the smoothing parameters for each model term.
+    -   The smoothing parameters control how smooth or "wiggly" the smoothing functions will be: More "wiggly" functions will explain the variance in our data better, but will become harder to interpret, and may not generalize well to other datasets.
+    -   The smoothing parameters can be manually specified to adjust the tradeoff between variance explained and robustness of the model. A smoothing parameter of 0 will fit the relationship in the data exactly, while a smoothing parameter of 1 will practically fit a straight line.
+-   We will also let the algorithm apply "shrinkage": This will penalize the model parameters further, shrinking variables with weak effects, in a sense "choosing" the predictors for us without completely dropping them from the model.
 
 Let's fit our model, and view the model summary.
-```{r, echo=TRUE}
+
+```{r}
+#| echo: true
+
 gam1 <- gam(strength ~ 
                 te(total_cem, total_water, total_agg) +
                 ti(total_cem, cement, slag, flyash) +
@@ -479,14 +474,13 @@ summary(gam1)
 
 The output is somewhat similar to a linear regression output, though there are no coefficients displayed for model terms, as each term has not one but numerous smooth functions that predict its effect.
 
-- The Ref.df column shows the number of smooth functions fitted for each model term. Age has 9 smooth functions, while the 4-way interaction between total_cem and its components has 179.
-- The P-values for all our model terms are highly significant.
-- The F-stat for age is 429, much higher than other model terms. This suggests age is a much more significant predictor of mix strength compared to the other terms. This is not what we'd expect, and is likely because age has much fewer degrees of freedom compared to the other terms.
-- The deviance explained by the model is 92.5%, and the adjusted R-square is 91.4%. A high degree of variation is explained by the model.
+-   The Ref.df column shows the number of smooth functions fitted for each model term. Age has 9 smooth functions, while the 4-way interaction between total_cem and its components has 179.
+-   The P-values for all our model terms are highly significant.
+-   The F-stat for age is 429, much higher than other model terms. This suggests age is a much more significant predictor of mix strength compared to the other terms. This is not what we'd expect, and is likely because age has much fewer degrees of freedom compared to the other terms.
+-   The deviance explained by the model is 92.5%, and the adjusted R-square is 91.4%. A high degree of variation is explained by the model.
 
-\
 Let's plot the predicted values of concrete strength against the observed values in the data.
-\
+
 ```{r}
 
 gam1_fit <- data.frame(fitted=gam1$fitted.values, observed=df_org$strength, model="gam1")
@@ -497,54 +491,57 @@ ggplot(data=gam1_fit, aes(x=fitted, y=observed)) + geom_point(color="#0571B0") +
                     x="Predicted strength", y="Observed strength")
 
 ```
-\
-The model fits the data well overall, though there are a few observations with considerably inaccurate predictions. The model predicts zero, close to zero or even negative strength for a few low-strength mixtures. This could be an indication our model places a little more importance on our predictors than they actually have.
-\
+
+The model fits the data well overall, though there are a few observations with considerably inaccurate predictions. The model predicts zero, close to zero or even negative strength for a few low-strength mixtures. This could be an indication our model places a little more importance on our predictors than they actually have.\
 \
 Let's check if our model fits the assumptions, which is done in a very similar way to linear regression.
+
 ```{r}
 gam.check(gam1)
 ```
 
-- Our outcome variable was close to being normally distributed, but had some right skew. We see that the normality of residuals assumption is  close to being satisfied, but there is some deviation, especially towards the lowest and highest quantiles.
-- There is some pattern for the lowest predictions in the residuals vs. fitted plot, though overall our smooths seem to capture the relationships between the predictors and the outcome well.
-- Most of the residuals are concentrated around 0, between 5 and -5. The residual distribution's tails on both directions are generally balanced. There seems to be a very slight bias towards negative residuals, which may mean our model tends to underpredict mixture strength a little.
-- Finally, we have a report on the model convergence, and the basis functions.
-  - Our model has converged fully, meaning it was able to find an "optimal" solution with these variables and observations.
-  - Some model terms have a k-index lower than 1, and significant p-values associated with the test. This can mean the number of smooths (basis functions) we fit was too low to fully capture the relationship between that model term and the outcome. Here, it seems like we could try fitting more basis functions, especially for age.
+-   Our outcome variable was close to being normally distributed, but had some right skew. We see that the normality of residuals assumption is close to being satisfied, but there is some deviation, especially towards the lowest and highest quantiles.
+-   There is some pattern for the lowest predictions in the residuals vs. fitted plot, though overall our smooths seem to capture the relationships between the predictors and the outcome well.
+-   Most of the residuals are concentrated around 0, between 5 and -5. The residual distribution's tails on both directions are generally balanced. There seems to be a very slight bias towards negative residuals, which may mean our model tends to underpredict mixture strength a little.
+-   Finally, we have a report on the model convergence, and the basis functions.
+    -   Our model has converged fully, meaning it was able to find an "optimal" solution with these variables and observations.
+    -   Some model terms have a k-index lower than 1, and significant p-values associated with the test. This can mean the number of smooths (basis functions) we fit was too low to fully capture the relationship between that model term and the outcome. Here, it seems like we could try fitting more basis functions, especially for age.
 
-\
 One more thing we have to diagnose is the presence of concurvity in the model. Concurvity can be thought of as "multicollinearity for GAM". The presence of strong concurvity between two model terms means one can be approximated from the smooths of another.
 
 ```{r}
 round(concurvity(gam1, full=TRUE), 4)
 ```
+
 Above, we have the overall concurvity of each model term with the other terms, 0 being no concurvity and 1 being highest. All model terms except age have very high overall concurvity, meaning they can be strongly approximated using other model terms.
 
-- This isn't surprising, as the total component variables were calculated from the original components, and the original components displayed considerable correlations with one another. If these components are viable to mix in certain proportions, it's natural for them to be correlated.
-- The implications of this are similar to multicollinearity in linear models: This model can't reliably tell us the relative importance of each model term, though the overall predictions will likely still be accurate.
+-   This isn't surprising, as the total component variables were calculated from the original components, and the original components displayed considerable correlations with one another. If these components are viable to mix in certain proportions, it's natural for them to be correlated.
+-   The implications of this are similar to multicollinearity in linear models: This model can't reliably tell us the relative importance of each model term, though the overall predictions will likely still be accurate.
 
 Of course, one of the main benefits of GAMs is the ability to plot the smooths fitted for model terms, visualizing the complex, non-linear relationships between predictors and the outcome. We will do this later using 3D plots, but for now, let's fit a simpler, more robust model that doesn't suffer from concurvity.
 
 ### gam2
 
 With gam1, we fit a complex model with many interactions between the components. Now, let's go the other way, and fit a very simple model, and see how it performs compared to our first model. We will simply predict concrete strength using the main effects of the water/cement ratio, and concrete age.
-```{r, echo=TRUE}
+
+```{r}
+#| echo: true
+
 gam2 <- gam(strength ~ 
               s(wc_ratio) +
               s(age), 
             data=df_org, method="REML", select=TRUE)
 summary(gam2)
 ```
+
 This model certainly takes much less time to compute.
 
-- The model explains 80.1% of the deviance, and the adjusted R-square value is 79.8%. Considerably less than gam1, but impressive considering we used only 2 variables.
-- Both variables are highly significant. Both variables are only fitted with 9 smooths, compared to hundreds for some model terms in gam1.
-- The F-stat is 251 for the water/cement ratio, and 211 for age. Contrary to gam1, this model suggests the components have a bigger effect on concrete strength than mixture age, which is what we'd expect.
+-   The model explains 80.1% of the deviance, and the adjusted R-square value is 79.8%. Considerably less than gam1, but impressive considering we used only 2 variables.
+-   Both variables are highly significant. Both variables are only fitted with 9 smooths, compared to hundreds for some model terms in gam1.
+-   The F-stat is 251 for the water/cement ratio, and 211 for age. Contrary to gam1, this model suggests the components have a bigger effect on concrete strength than mixture age, which is what we'd expect.
 
-\
 Let's plot the predicted vs. observed values, together with those from gam1, and compare the fits.
-\
+
 ```{r}
 gam2_fit <- data.frame(fitted=gam2$fitted.values, observed=df_org$strength, model="gam2")
 gam2_fit <- rbind(gam1_fit, gam2_fit)
@@ -554,59 +551,65 @@ ggplot(data=gam2_fit, aes(x=fitted, y=observed, color=model)) + geom_point() + g
                     subtitle="N=1,030",
                     x="Predicted strength", y="Observed strength")
 ```
-\
+
 While gam2's predictions perform well, the overall error is considerably higher than gam1's predictions.
 
-- There are many more observations overpredicted by gam2 compared to gam1. 
-  - gam2 especially overpredicts many observations between the predicted ranges of 20-60, suggesting there's a bit more to concrete strength than just the water/cement ratio and the age. 
-  - This is likely because gam2 doesn't account for the interactions between original components, like gam1 does.
+-   There are many more observations overpredicted by gam2 compared to gam1.
+    -   gam2 especially overpredicts many observations between the predicted ranges of 20-60, suggesting there's a bit more to concrete strength than just the water/cement ratio and the age.
+    -   This is likely because gam2 doesn't account for the interactions between original components, like gam1 does.
 
 Let's diagnose gam2 the same way we diagnosed gam1.
+
 ```{r}
 gam.check(gam2)
 ```
 
-- The normality of residuals assumption is close to being satisfied overall, though there are deviations, again increasingly towards lowest and highest quantiles.
-- The residuals vs. fitted plot is very similar to gam1's overall, but the pattern for the lowest predictions is somewhat less noticable. Maybe gam2's smooths fit the relationships a bit better.
-- The histogram of residuals is again generally balanced around 0, but there are considerably more predictions with a residual outside the -5 to 5 range. Besides, the right tail of the residual distribution is a bit longer, indicating that the errors are not as balanced as gam1's.
-  - The highest residuals here are likely the strongly underpredicted observations we saw in the predicted vs. observed plot.
-- Again, it's likely that the number of basis functions for each model term is too low: This time, the k-indexes are even lower compared to gam1.
-  - We could try to optimize both gam1 and gam2 a bit by adding more basis functions for model terms, but this likely wouldn't yield a huge improvement.
+-   The normality of residuals assumption is close to being satisfied overall, though there are deviations, again increasingly towards lowest and highest quantiles.
+-   The residuals vs. fitted plot is very similar to gam1's overall, but the pattern for the lowest predictions is somewhat less noticable. Maybe gam2's smooths fit the relationships a bit better.
+-   The histogram of residuals is again generally balanced around 0, but there are considerably more predictions with a residual outside the -5 to 5 range. Besides, the right tail of the residual distribution is a bit longer, indicating that the errors are not as balanced as gam1's.
+    -   The highest residuals here are likely the strongly underpredicted observations we saw in the predicted vs. observed plot.
+-   Again, it's likely that the number of basis functions for each model term is too low: This time, the k-indexes are even lower compared to gam1.
+    -   We could try to optimize both gam1 and gam2 a bit by adding more basis functions for model terms, but this likely wouldn't yield a huge improvement.
 
 Let's check the concurvity of gam2 model terms, which should be much less of a problem compared to gam1.
+
 ```{r}
 round(concurvity(gam2, full=TRUE), 4)
 ```
-We see that concurvity is practically non-existent in gam2. 
 
-- This means the significances and effect sizes estimated for gam2's model terms are much more reliable. As we would expect, the effect of water/cement ratio on mixture strength is higher compared to the effects of mixture age.
-- gam2's predictions overall may be less accurate on this dataset, and explain less variance compared to gam1, but they are also likely to be more robust, and generalize better to predictions with new data.
+We see that concurvity is practically non-existent in gam2.
+
+-   This means the significances and effect sizes estimated for gam2's model terms are much more reliable. As we would expect, the effect of water/cement ratio on mixture strength is higher compared to the effects of mixture age.
+-   gam2's predictions overall may be less accurate on this dataset, and explain less variance compared to gam1, but they are also likely to be more robust, and generalize better to predictions with new data.
 
 Finally, we can compare the two models' AIC scores. A lower AIC score indicates a better tradeoff between model accuracy and complexity.
-```{r, echo=TRUE}
+
+```{r}
+#| echo: true
+
 AIC(gam1, gam2)
 ```
+
 Despite having many more degrees of freedom (higher complexity), gam1 still has a lower AIC score than gam2.
 
-- This suggests the numerous effects and interactions we included in gam1 are worth the extra complexity. 
-- This is also supported by the fact that gam1's algorithm didn't shrink any of the model terms' effects to zero. 
-- All terms in gam1 are likely significant predictors of mixture strength, we just can't be sure of their relative importances due to the presence of high concurvity.
+-   This suggests the numerous effects and interactions we included in gam1 are worth the extra complexity.
+-   This is also supported by the fact that gam1's algorithm didn't shrink any of the model terms' effects to zero.
+-   All terms in gam1 are likely significant predictors of mixture strength, we just can't be sure of their relative importances due to the presence of high concurvity.
 
 This also tells us a third model between gam1 and gam2 in terms of complexity is unlikely to perform much better. So let's move on to plotting the relationships modeled by gam1 and gam2, using 3D plots.
 
 ## 3D plots of model results
 
 We will now visualize the smooths fitted for the relationships between our predictor variables, and our outcome variable, strength. We could do this one by one with 2D line plots, but since there are numerous significant interactions between our component variables, plotting the relationships with 3D plots is likely to be more insightful.
-\
-\
+
 For the relationships between the total component variables and age, we will use surface plots. We will have two predictors as the X and Y variables, and their values will include their full ranges from our dataset. We will predict a concrete strength value for every combination of X and Y. These predictions for strength will make up our Z variable, and the surface of our plots.
 
-- While making these predictions, we will hold the predictors outside the plot constant, using their median values. However, since the total component variables are the sum of their sub-components, we will have to calculate one sub-component variable from the total component variable and the median of the other component variable(s).
-- For example, in the plot of total_cem vs total_water, total_cem will take values ranging from 200 to 640, as in our original dataset. Variables slag and flyash will take their median values, 22 and 0 respectively, and cement will be calculated as total_cem - slag - flyash for every point. This will ensure no sub-component variable will exceed the total component variables, or take unrealistic values.
+-   While making these predictions, we will hold the predictors outside the plot constant, using their median values. However, since the total component variables are the sum of their sub-components, we will have to calculate one sub-component variable from the total component variable and the median of the other component variable(s).
+-   For example, in the plot of total_cem vs total_water, total_cem will take values ranging from 200 to 640, as in our original dataset. Variables slag and flyash will take their median values, 22 and 0 respectively, and cement will be calculated as total_cem - slag - flyash for every point. This will ensure no sub-component variable will exceed the total component variables, or take unrealistic values.
 
 For the relationships between the total components and their sub-components, we will use scatterplots. The predictors outside of the plot will be held constant at their median values. Every combination of the sub-component variables will sum up to their total component variable, to ensure we don't have unrealistic predictors.
 
-- For example, in the plot of cement vs. total_cem, slag and flyash will take their median values, 22 and 0 respectively. The range for cement will be 100-540, as in the original data. total_cem will be calculated from its components, and points with values outside their realistic ranges will be excluded. This will ensure the plotted X and Y variables are in realistic ranges, while the total component variables equal the sum of their sub-components.
+-   For example, in the plot of cement vs. total_cem, slag and flyash will take their median values, 22 and 0 respectively. The range for cement will be 100-540, as in the original data. total_cem will be calculated from its components, and points with values outside their realistic ranges will be excluded. This will ensure the plotted X and Y variables are in realistic ranges, while the total component variables equal the sum of their sub-components.
 
 ```{r}
 
@@ -672,7 +675,7 @@ gridage <- minage:maxage
 ### gam1 plots
 
 Let's start with our calculated total components, and their relationships with concrete strength.
-\
+
 ```{r}
 dsur1 <- expand.grid(gridcem, gridwat)
 names(dsur1) [1] <- "total_cem"
@@ -721,11 +724,10 @@ htmltools::tagList(sur1)
 
 The above predictions are made by varying total_cem and total_water, while holding all other variables constant at their medians, except cement and water. Cement is calculated as total_cem - slag - flyash, while water is calculated as total_water - SP.
 
-- As we saw from our exploratory analysis, gam1 generally predicts a stronger mixture for higher amounts of total cements.
-- The strongest mixtures generally have lower amounts of total water content, roughly around 160 units, though any value below roughly 200 units can yield some of the the strongest mixes.
-- Overall, the predictions for strength has a range of roughly 10-100 in this plot. Keep in mind these are predictions made by holding the other variables constant. This wide range tells us just the total amounts of cement and water-type components can strongly influence the mix strength.
+-   As we saw from our exploratory analysis, gam1 generally predicts a stronger mixture for higher amounts of total cements.
+-   The strongest mixtures generally have lower amounts of total water content, roughly around 160 units, though any value below roughly 200 units can yield some of the the strongest mixes.
+-   Overall, the predictions for strength has a range of roughly 10-100 in this plot. Keep in mind these are predictions made by holding the other variables constant. This wide range tells us just the total amounts of cement and water-type components can strongly influence the mix strength.
 
-\
 ```{r}
 dsur2 <- expand.grid(gridcem, gridagg)
 names(dsur2) [1] <- "total_cem"
@@ -774,13 +776,12 @@ htmltools::tagList(sur2)
 
 This time, we vary the total_cem and total_agg variables:
 
-- When the amount of total cements in a mixture is low, higher amounts of aggregate content makes the mixtures stronger.
-- But when the total amount of cements is high, the relationship seems to reverse, and the highest amounts of aggregates make the mixes a bit weaker, while medium amounts of aggregates seem ideal. Low amounts of aggregates also reduce mix strength a bit.
-- Low amounts for both total cements and total aggregates leads to very low mixture strength.
-- This suggests the "solid" content of the mix can come from the cements or aggregates in varying balances, but not enough solids is likely to cause a weak mix.
-- The range for strength predictions in this plot go from -10's to almost 100, meaning the amount of solid components overall is possibly even more impactful than the balance of cements and water. 
+-   When the amount of total cements in a mixture is low, higher amounts of aggregate content makes the mixtures stronger.
+-   But when the total amount of cements is high, the relationship seems to reverse, and the highest amounts of aggregates make the mixes a bit weaker, while medium amounts of aggregates seem ideal. Low amounts of aggregates also reduce mix strength a bit.
+-   Low amounts for both total cements and total aggregates leads to very low mixture strength.
+-   This suggests the "solid" content of the mix can come from the cements or aggregates in varying balances, but not enough solids is likely to cause a weak mix.
+-   The range for strength predictions in this plot go from -10's to almost 100, meaning the amount of solid components overall is possibly even more impactful than the balance of cements and water.
 
-\
 ```{r}
 dsur3 <- expand.grid(gridwat, gridagg)
 names(dsur3) [1] <- "total_water"
@@ -829,13 +830,12 @@ htmltools::tagList(sur3)
 
 Varying total_water and total_agg, we see this duo's balance is less impactful overall than the previous two groupings.
 
-- Adding more water-type components leads to weaker mixes up until roughly 175 units, given there is a low-medium amount of aggregates. After that point, there is some increase in strength as more water-types are added.
-- Adding more aggregates tends to increase mix strength, given there is less than roughly 180-200 units of water-types in the mix. After that, the relationship sort of reverses: Given a high amount of water-type content, the optimal total aggregate content is around roughly 1600 units, and any increase or decrease weakens the mix.
-- The range of strength predictions in this plot is -10s to 40s, narrower compared to the previous ones, suggesting total cements is the strongest predictor out of the 3 main components, followed by total aggregates, and total water-types is the weakest predictor of the 3.
+-   Adding more water-type components leads to weaker mixes up until roughly 175 units, given there is a low-medium amount of aggregates. After that point, there is some increase in strength as more water-types are added.
+-   Adding more aggregates tends to increase mix strength, given there is less than roughly 180-200 units of water-types in the mix. After that, the relationship sort of reverses: Given a high amount of water-type content, the optimal total aggregate content is around roughly 1600 units, and any increase or decrease weakens the mix.
+-   The range of strength predictions in this plot is -10s to 40s, narrower compared to the previous ones, suggesting total cements is the strongest predictor out of the 3 main components, followed by total aggregates, and total water-types is the weakest predictor of the 3.
 
-\
 Now, let's examine the balances of each sub-component, and their effects on mixture strength, starting with cement-type components.
-\
+
 ```{r}
 gridcemt <- seq(100, 540, 5)
 gridcem <- seq(200, 640, 5)
@@ -877,13 +877,12 @@ htmltools::tagList(sur4.2)
 
 We see interesting patterns in the cement vs total_cem plot:
 
-- Overall, higher amounts of total cement-type components increases mixture strength.
-- Given the highest amounts of total cement-types, regular cement content can range from roughly 300 units to 550, and the strongest mixes can be observed at both ends of this range.
-  - This suggests we can substitute regular cement to a moderate degree, and still achieve strong mixes.
-- Given medium or low amounts of total cement-types, the strongest mixes actually have the lowest cement contents. The differences are small, but this may suggest using some replacements instead of pure regular cement improves mix strength.
-- The strongest mixes with the highest amounts of total cement-types all have at least roughly 200 units of regular cement. This suggests a certain base amount of regular cement has to be used for strong mixes.
+-   Overall, higher amounts of total cement-type components increases mixture strength.
+-   Given the highest amounts of total cement-types, regular cement content can range from roughly 300 units to 550, and the strongest mixes can be observed at both ends of this range.
+    -   This suggests we can substitute regular cement to a moderate degree, and still achieve strong mixes.
+-   Given medium or low amounts of total cement-types, the strongest mixes actually have the lowest cement contents. The differences are small, but this may suggest using some replacements instead of pure regular cement improves mix strength.
+-   The strongest mixes with the highest amounts of total cement-types all have at least roughly 200 units of regular cement. This suggests a certain base amount of regular cement has to be used for strong mixes.
 
-\
 ```{r}
 
 gridslag <- seq(0, 360, 5)
@@ -928,10 +927,9 @@ htmltools::tagList(sur4.1)
 
 Generally, it's possible to achieve the strongest mixes with a wide range of slag contents.
 
-- Given the highest amounts of total cement-types, the strongest mixes can be achieved with a low slag content, such as around 100 units, or a medium amount of slag, such as around 260. There is a "valley" between these peaks, where mix strength drops considerably.
-- Given the lowest amounts of total cement-types, a higher slag content up to 100 units seems to reduce mix strength considerably. This may again suggest a strong mix has to include a certain amount of regular cement.
+-   Given the highest amounts of total cement-types, the strongest mixes can be achieved with a low slag content, such as around 100 units, or a medium amount of slag, such as around 260. There is a "valley" between these peaks, where mix strength drops considerably.
+-   Given the lowest amounts of total cement-types, a higher slag content up to 100 units seems to reduce mix strength considerably. This may again suggest a strong mix has to include a certain amount of regular cement.
 
-\
 ```{r}
 gridflyash <- seq(0, 200, 5)
 gridcem <- seq(200, 640, 5)
@@ -975,16 +973,15 @@ htmltools::tagList(sur5)
 
 The patterns in the flyash vs. total_cem plot are also interesting:
 
-- Given the highest amounts of total cement-type content, the strongest mixes have zero flyash content. However, some strong mixes also contain higher amounts of flyash, around roughly 170 units.
-- For medium amounts of total cement-type content, the strongest mixes have some flyash, roughly around 70 units, while mixes with less and more are generally weaker, though the difference is small.
-- For the lowest amounts of total cement-type content, a higher flyash content considerably reduces the mix strength, up until roughly 70 units. However, adding more flyash after this point, along with a little more of other cement-types, greatly increases the mix strength.
-  - Again, this suggests a base amount of regular cement is necessary for strong mixes. 
+-   Given the highest amounts of total cement-type content, the strongest mixes have zero flyash content. However, some strong mixes also contain higher amounts of flyash, around roughly 170 units.
+-   For medium amounts of total cement-type content, the strongest mixes have some flyash, roughly around 70 units, while mixes with less and more are generally weaker, though the difference is small.
+-   For the lowest amounts of total cement-type content, a higher flyash content considerably reduces the mix strength, up until roughly 70 units. However, adding more flyash after this point, along with a little more of other cement-types, greatly increases the mix strength.
+    -   Again, this suggests a base amount of regular cement is necessary for strong mixes.
 
 The last 3 plots suggest the optimal mix strength is likely achieved with a mixture of the three cement types, but a mixture without a certain amount of regular cement is unlikely to be strong.
 
-\
 Now, let's do the same for water-type components. We can do this with one plot, as the range of values for superplasticizer is very narrow, and total amounts for water type-components are mostly made up of water.
-\
+
 ```{r}
 gridwater <- seq(120, 250, 1)
 gridSP <- seq(0, 32, 1)
@@ -1026,18 +1023,17 @@ htmltools::tagList(sur6.1)
 
 The patterns in the water vs. SP plot are interesting:
 
-- The strongest mixes have high water content, roughly around 250 units, and either zero or a few units of SP.
-- Decent mix strengths are also observed with: 
-  - Low water content, roughly around 120 units, and zero SP,
-  - Or high water content, roughly around 230 units, and high SP content, around 30 units.
-- The remaining areas in the plot all coincide with low mix strengths. 
-  - Interestingly, the lowest predictions for mix strength are close to the highest ones in terms of water and SP content: The lowest strength predictions come with around 245 units of water and 15 units of SP. This is likely because SP reduces the need for water, so adding it to a high-water mix may greatly reduce the strength.
-- We know that a low water/cement ratio makes a mix stronger, but according to this plot, the strongest mixes have the highest water contents. 
-  - This is likely because the range for water amounts in our dataset is narrow, and the strongest mixes have much more relative cement content, with a little more relative water content.
-  
-\
+-   The strongest mixes have high water content, roughly around 250 units, and either zero or a few units of SP.
+-   Decent mix strengths are also observed with:
+    -   Low water content, roughly around 120 units, and zero SP,
+    -   Or high water content, roughly around 230 units, and high SP content, around 30 units.
+-   The remaining areas in the plot all coincide with low mix strengths.
+    -   Interestingly, the lowest predictions for mix strength are close to the highest ones in terms of water and SP content: The lowest strength predictions come with around 245 units of water and 15 units of SP. This is likely because SP reduces the need for water, so adding it to a high-water mix may greatly reduce the strength.
+-   We know that a low water/cement ratio makes a mix stronger, but according to this plot, the strongest mixes have the highest water contents.
+    -   This is likely because the range for water amounts in our dataset is narrow, and the strongest mixes have much more relative cement content, with a little more relative water content.
+
 Let's move to the balance of the aggregate components.
-\
+
 ```{r}
 gridCA <- seq(800, 1200, 5)
 gridFA <- seq(600, 1000, 5)
@@ -1079,14 +1075,13 @@ htmltools::tagList(sur7)
 
 The plot for aggregates is much more straightforward to interpret.
 
-- The strongest mixes have the lowest amounts of both coarse and fine aggregates, with more CA than FA content. The peak is around roughly 800 units of CA, and 650 units of FA, a ratio of 55%-45%
-- Highest amounts of CA mixed with low amounts of FA also yield moderately strong mixes, especially around 1200 units of CA and 700 units of FA, a ratio of 65%-35%.
-- Mixes with the lowest amounts of CA, and the highest amounts of FA, with 800 and 1000 units respectively, are the weakest.
-- Overall, we can say that low amounts of aggregates (relative to the ranges in our dataset), and a bit more CA than FA content, yields the strongest mixes. 
+-   The strongest mixes have the lowest amounts of both coarse and fine aggregates, with more CA than FA content. The peak is around roughly 800 units of CA, and 650 units of FA, a ratio of 55%-45%
+-   Highest amounts of CA mixed with low amounts of FA also yield moderately strong mixes, especially around 1200 units of CA and 700 units of FA, a ratio of 65%-35%.
+-   Mixes with the lowest amounts of CA, and the highest amounts of FA, with 800 and 1000 units respectively, are the weakest.
+-   Overall, we can say that low amounts of aggregates (relative to the ranges in our dataset), and a bit more CA than FA content, yields the strongest mixes.
 
-\
 Now, let's turn our attention to the age variable, and plot its relationship with mix strength, along with the total component variables.
-\
+
 ```{r}
 gridcem <- mincem:maxcem
 
@@ -1137,19 +1132,17 @@ htmltools::tagList(sur9)
 
 The relationship between age and strength is a distinct, non-linear function that holds at any level of total cement-type components.
 
-- Mix strength generally increases up to roughly 130 days, then declines until roughly 220 days, and increases again until roughly 330 days.
-- Higher amounts of total cement-type components generally translate into stronger mixes, at any age.
-- As age is a single term in our model with no interactions, we can also visualize its smooth with a simple 2D line plot. This will look just like the 3D plot viewed from a 90-degree angle, with the age axis in front.
+-   Mix strength generally increases up to roughly 130 days, then declines until roughly 220 days, and increases again until roughly 330 days.
+-   Higher amounts of total cement-type components generally translate into stronger mixes, at any age.
+-   As age is a single term in our model with no interactions, we can also visualize its smooth with a simple 2D line plot. This will look just like the 3D plot viewed from a 90-degree angle, with the age axis in front.
 
-\
 ```{r}
 plot_smooth(gam1, view="age", col="#0571B0", rm.ranef=FALSE, lwd=2, print.summary=FALSE,
             main="Smooth function of concrete age and strength, gam1")
 ```
-\
+
 With the 2D plot, we can see the confidence bands for the smooth. The relationship becomes increasingly uncertain with higher values of age, which is expected as most observations in our dataset have ages close to zero.
-\
-\
+
 ```{r}
 gridwat <- minwat:maxwat
 
@@ -1198,13 +1191,12 @@ sur10 <- plot_ly(z=~mat10, x=diswat, y=disage) %>%
 htmltools::tagList(sur10)
 ```
 
-Both age and total water-type components maintain a distinct relationship with mixture strength, at all levels of the other variable. 
+Both age and total water-type components maintain a distinct relationship with mixture strength, at all levels of the other variable.
 
-- The relationship between age and strength is the same as the previous plot, except more pronounced.
-- The strongest mixes at any age have either roughly 180 units of water-type content, or more than around 240.
-- The weakest mixes are around 200 units of total water-type content, though the difference is not much.
+-   The relationship between age and strength is the same as the previous plot, except more pronounced.
+-   The strongest mixes at any age have either roughly 180 units of water-type content, or more than around 240.
+-   The weakest mixes are around 200 units of total water-type content, though the difference is not much.
 
-\
 ```{r}
 gridagg <- minagg:maxagg
 
@@ -1258,7 +1250,7 @@ Again, both age and total aggregate content maintain their distinct relationship
 ### gam2 plots
 
 Since gam2 is a much simpler model with only two variables, we can summarize the predictions and relationships with one surface plot.
-\
+
 ```{r}
 dsur8 <- expand.grid(gridWC, gridage)
 names(dsur8) [1] <- "wc_ratio"
@@ -1295,29 +1287,30 @@ sur8 <- plot_ly(z=~mat8, x=disWC, y=disage) %>%
 htmltools::tagList(sur8)
 ```
 
-The distinct relationship between age and mix strength holds at every level of the W/C ratio. 
+The distinct relationship between age and mix strength holds at every level of the W/C ratio.
 
-- The relationship between W/C ratio and mix strength can generally be considered a diminishing decline, as we expected from our exploratory analysis. 
-- Up until roughly 0.7, increasing the W/C ratio considerably decreases the mix strength. After this point, strength does continue to decline, but very slightly.
-- The relationship between age and mixture strength has the same shape as in gam1, though the values for the peaks and valleys in the smooth are slightly different.
+-   The relationship between W/C ratio and mix strength can generally be considered a diminishing decline, as we expected from our exploratory analysis.
+-   Up until roughly 0.7, increasing the W/C ratio considerably decreases the mix strength. After this point, strength does continue to decline, but very slightly.
+-   The relationship between age and mixture strength has the same shape as in gam1, though the values for the peaks and valleys in the smooth are slightly different.
 
-\ 
 Let's plot the 2D smooths for both variables and see their confidence bands.
-\
-\
+
 ```{r}
 plot_smooth(gam2, view="wc_ratio", col="#0571B0", rm.ranef=FALSE, lwd=2, print.summary=FALSE,
             main="Smooth function of water / cement ratio and concrete strength, gam2")
 plot_smooth(gam2, view="age", col="#0571B0", rm.ranef=FALSE, lwd=2, print.summary=FALSE,
             main="Smooth function of concrete age and strength, gam2")
 ```
-\
-The relationship between W/C ratio and strength is much more certain compared to age, though the certainty drops after 0.7, as we have fewer observations with a higher W/C ratio than this. The relationship between age and mix strength is also more certain compared to the one in gam1, possibly because gam2 has no concurvity. 
+
+The relationship between W/C ratio and strength is much more certain compared to age, though the certainty drops after 0.7, as we have fewer observations with a higher W/C ratio than this. The relationship between age and mix strength is also more certain compared to the one in gam1, possibly because gam2 has no concurvity.
 
 ## Maximization with gam1
 
 We can use gam1 to solve a maximization problem to estimate the mix with the strongest compressive strength. First, we define a function that will take in the original component variables, calculate the total component variables, and use these to make a prediction with gam1. We will hold age constant at 91, as that is the age of the strongest mix in our dataset, and we will compare the component ratios with it.
-```{r, echo=TRUE}
+
+```{r}
+#| echo: true
+
 predgam1 <- function(x){
   dat <- data.frame(cement=x[1], slag=x[2], flyash=x[3], 
                         total_cem=(x[1]+x[2]+x[3]),
@@ -1332,9 +1325,12 @@ predgam1 <- function(x){
   return(predict(gam1, newdata=dat))
 }
 ```
-\
+
 Now, we will solve an optimization problem that uses gam1 as the calculation function, constrained by the ranges of the predictor variables in the dataset, to find the maximum possible compressive strength, and the associated values of each component. The optimization problem will start calculating with the values of the strongest mix in our dataset.
-```{r, echo=TRUE}
+
+```{r}
+#| echo: true
+
 dfopt <- dplyr::select(df_org, -c(4,7,10,11,12,13))
 initval <- dfopt[182,]
 
@@ -1365,10 +1361,12 @@ optdf <- optdf %>% relocate(total_agg, .after=FA)
 
 optdf <- round(optdf, 2)
 ```
-\
-\
-Here is the output of the optimization, the maximum strength predicted, and values of the predictor variables. The value for total_cem is higher than the range in our dataset, because it is calculated by summing the cement-type variables, but not itself constrained in the problem. 
-```{r, echo=TRUE}
+
+Here is the output of the optimization, the maximum strength predicted, and values of the predictor variables. The value for total_cem is higher than the range in our dataset, because it is calculated by summing the cement-type variables, but not itself constrained in the problem.
+
+```{r}
+#| echo: true
+
 optdf
 ```
 
@@ -1419,36 +1417,34 @@ tb3 <- gt(data=ratiosdf, rownames_to_stub = FALSE, rowname_col="Components") %>%
   cols_label(Optimized="Optimized by gam1", Original="Strongest mix", Original2="Weakest mix")
 
 ```
-\
-\
+
 Let's see the ratios of the total component variables in the entire mix, and the ratios of each sub-component variable within their category. We will compare the optimal ratios calculated using gam1, and the ratios from the strongest mix in the dataset, and the weakest mix with the same age.
-\
+
 ```{r}
 tb3
 ```
-\
+
 The optimal ratios calculated by gam1, and the ratios from the strongest mix in our dataset are fairly close overall.
 
-- The optimal mix has the highest ratio of cement-type components, and the lowest ratio of aggregate components. The weakest mix has the lowest ratio of cement-types and highest ratio of aggregates. The ratios of water-type components are very close.
-- The optimal mix has the lowest ratio of regular cement, and the highest ratio of slag, though the ratio for regular cement is still higher than slag. The weakest mix has the highest ratio of regular cement and the lowest ratio of slag. 
-  - All three mixes have zero fly ash content.
-- The optimal mix uses a small ratio of superplasticizer, the strong mix uses a slightly higher ratio of SP, and the weakest mix uses a ratio of SP between them.
-  - It's likely that water and SP ratios much outside the range in our dataset are not viable at all, and therefore not used.
-- In all mixes, the ratio of CA is a bit higher than the ratio of FA. The optimal mix has the lowest ratio of CA, and the weakest mix has the highest ratio of CA.
+-   The optimal mix has the highest ratio of cement-type components, and the lowest ratio of aggregate components. The weakest mix has the lowest ratio of cement-types and highest ratio of aggregates. The ratios of water-type components are very close.
+-   The optimal mix has the lowest ratio of regular cement, and the highest ratio of slag, though the ratio for regular cement is still higher than slag. The weakest mix has the highest ratio of regular cement and the lowest ratio of slag.
+    -   All three mixes have zero fly ash content.
+-   The optimal mix uses a small ratio of superplasticizer, the strong mix uses a slightly higher ratio of SP, and the weakest mix uses a ratio of SP between them.
+    -   It's likely that water and SP ratios much outside the range in our dataset are not viable at all, and therefore not used.
+-   In all mixes, the ratio of CA is a bit higher than the ratio of FA. The optimal mix has the lowest ratio of CA, and the weakest mix has the highest ratio of CA.
 
 ## Conclusions
 
 We fit two GAM regression models to try and explain the relationship of concrete compressive strength and concrete components.
 
-- The complex model gam1 took into account the mixture age, total amounts of three main concrete components, their interactions with one another, and their interactions with their sub-components.
-- The simpler model gam2 used only two variables to predict the mix strength: Water/cement ratio, and the mixture age.
+-   The complex model gam1 took into account the mixture age, total amounts of three main concrete components, their interactions with one another, and their interactions with their sub-components.
+-   The simpler model gam2 used only two variables to predict the mix strength: Water/cement ratio, and the mixture age.
 
 gam1 explained a very high degree of deviance, at 92.5%, while gam2 explained a considerable portion of that with 80.1%.
 
-- Both models fit the model assumptions well, except gam1 suffered from very high concurvity. This made the significances and relative importances of its model terms unreliable, though its predictions overall fit the data better than gam2.
-- In contrast, gam2 offers a simple model free from concurvity, and reliably shows that components likely matter more than the mixture age in determining the concrete strength.
+-   Both models fit the model assumptions well, except gam1 suffered from very high concurvity. This made the significances and relative importances of its model terms unreliable, though its predictions overall fit the data better than gam2.
+-   In contrast, gam2 offers a simple model free from concurvity, and reliably shows that components likely matter more than the mixture age in determining the concrete strength.
 
 We were able to capture the non-linear, complex relationships between the predictors and the mixture strength, thanks to GAM's ability to fit numerous non-linear smooth functions. We were able to plot these relationships two at a time, using 3D plots, which gave us important insights into the balances between concrete components, and their effects on mixture strength.
-\
-\
+
 We solved a maximization problem using gam1, constrained by the range of predictor values in our dataset. We found the "optimal" balance of concrete components for compressive strength given a certain age, and compared these with the strongest and weakest mixes from our dataset, with the same age. We found that the ratios are not wildly different overall, but the optimal mix generally had a higher ratio of total cement-type content, had a higher ratio of slag (though still more regular cement than slag), and a lower ratio of total aggregates.
